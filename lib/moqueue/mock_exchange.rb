@@ -46,9 +46,9 @@ module Moqueue
 
     def attach_queue(queue, opts={})
       if topic
-        attached_queues << [queue, TopicBindingKey.new(opts[:key])]
+        attached_queues << [queue, TopicBindingKey.new(opts[:routing_key])]
       elsif direct
-        attached_queues << [queue, DirectBindingKey.new(opts[:key])]
+        attached_queues << [queue, DirectBindingKey.new(opts[:routing_key])]
       else
         attached_queues << queue unless attached_queues.include?(queue)
       end
@@ -77,7 +77,7 @@ module Moqueue
 
     def matching_queues(opts={})
       return attached_queues unless topic || direct
-      attached_queues.map {|q, binding| binding.matches?(opts[:key]) ? q : nil}.compact
+      attached_queues.map {|q, binding| binding.matches?(opts[:routing_key]) ? q : nil}.compact
     end
 
     def prepare_header_opts(opts={})
@@ -89,7 +89,7 @@ module Moqueue
     end
 
     def require_routing_key(opts={})
-      unless opts.has_key?(:key)
+      unless opts.has_key?(:routing_key)
         raise ArgumentError, "you must provide a key when publishing to a topic exchange"
       end
     end
@@ -97,10 +97,10 @@ module Moqueue
     public
 
     module BaseKey
-      attr_reader :key
+      attr_reader :routing_key
 
       def ==(other)
-        other.respond_to?(:key) && other.key == @key
+        other.respond_to?(:routing_key) && other.routing_key == @routing_key
       end
     end
 
@@ -108,11 +108,11 @@ module Moqueue
       include BaseKey
 
       def initialize(key_string)
-        @key = key_string.to_s.split(".")
+        @routing_key = key_string.to_s.split(".")
       end
 
       def matches?(message_key)
-        message_key, binding_key = message_key.split("."), key.dup
+        message_key, binding_key = message_key.split("."), routing_key.dup
 
         match = true
         while match
@@ -130,11 +130,11 @@ module Moqueue
       include BaseKey
 
       def initialize(key_string)
-        @key = key_string.to_s
+        @routing_key = key_string.to_s
       end
 
       def matches?(message_key)
-        message_key, binding_key = message_key.to_s, key.dup
+        message_key, binding_key = message_key.to_s, routing_key.dup
 
         # looking for string equivalence
         message_key == binding_key
